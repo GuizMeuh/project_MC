@@ -140,7 +140,6 @@ class EnergyModel:
             elif in_new and not in_old:
                 self.line_counts[line_id] += 1
         self.current_energy += delta_E
-        state.set_height(i, j, k_new)
 
     def count_attacked_queens(self, state: StackState) -> int:
         """
