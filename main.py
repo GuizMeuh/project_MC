@@ -10,7 +10,12 @@ from mcmc.proposals import (
     SingleStackRandomHeightProposal,
 )
 from mcmc.chain import MCMCChain
-from mcmc.annealing import AnnealingSchedule
+from mcmc.annealing import (
+    AnnealingSchedule,
+    LinearSchedule,
+    run_simulated_annealing,
+    GeometricSchedule,
+)
 from mcmc.proposals import SingleConstraintStackSwapProposal
 
 
@@ -50,28 +55,27 @@ def main(
 
     # ? Define annealing schedule
     if T_initial is not None and alpha is not None and max_steps is not None:
-        annealing_schedule = AnnealingSchedule(
+        annealing_schedule = GeometricSchedule(
             T_initial=T_initial,
             alpha=alpha,
             max_steps=max_steps,
-            num_steps_per_temp=number_of_steps,  # optionnel, ignoré en mode géométrique
-            verbose_every=verbose_every,
         )
     else:
-        annealing_schedule = AnnealingSchedule(
+        annealing_schedule = LinearSchedule(
             temperatures=temperatures,
             num_steps_per_temp=number_of_steps,
-            verbose_every=verbose_every,
         )
 
     # ? Run annealing
-    annealing_schedule.run(mcmc_chain, rng)
+    run_simulated_annealing(mcmc_chain, annealing_schedule, rng, verbose_every)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MCMC Annealing for Stack States")
     parser.add_argument("--N", type=int, default=8, help="Size of the board (N x N)")
-    parser.add_argument("--steps", type=int, default=10000, help="Number of MCMC steps")
+    parser.add_argument(
+        "--steps", type=int, default=1000000, help="Number of MCMC steps"
+    )
     parser.add_argument(
         "--seed", type=int, default=42, help="Random number generator seed"
     )

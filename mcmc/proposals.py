@@ -35,7 +35,6 @@ class SingleConstraintStackMove:
     k2: int  #! [1, ..., N] (height of stack i2)
 
 
-
 class Proposal(ABC):
     """
     Abstract base class for move generators
@@ -128,7 +127,6 @@ class SingleConstraintStackSwapProposal(Proposal):
         k2 = state.get_height(i2, j)
 
         #! compute delta_E using energy model
-        delta_E = energy_model.delta_energy_constraint_swap(state, i1, i2, j, k1, k2)
-
+        delta_E = energy_model.delta_energy(state, i1, i2, j, k1, k2)
         move = SingleConstraintStackMove(i1=i1, i2=i2, j=j, k1=k1, k2=k2)
         return move, delta_E

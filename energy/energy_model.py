@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from typing import List
 
-from state_space.states import StackState
+from state_space.states import StackState, ConstraintStackState
 from state_space.geometry import Board, LineIndex
 
 
@@ -27,7 +27,7 @@ class EnergyModel:
         #! Tot energy
         self.current_energy = 0
 
-    def initialize(self, state: StackState) -> None:
+    def initialize(self, state: StackState | ConstraintStackState) -> None:
         """
         Compute line_counts and current_energy from scratch for this state
         """
@@ -65,72 +65,73 @@ class EnergyModel:
 
         return nchoose2(c + dc) - nchoose2(c)
 
-    def delta_energy(self, state: StackState, i: int, j: int, k_new: int) -> int:
-        """Energy change if queen at (i,j) moves to new height k_new."""
-        old_k = state.get_height(i, j)
-        if k_new == old_k:
-            return 0
-
-        board = self.geometry
+    def _delta_energy_generic(
+        self, affected_cells_old: list[int], affected_cells_new: list[int]
+    ) -> int:
         lid = self.line_index
-
-        cell_old = board.coord_to_id(i, j, old_k)
-        cell_new = board.coord_to_id(i, j, k_new)
-
-        old_lines = lid.cell_to_lines[cell_old]
-        new_lines = lid.cell_to_lines[cell_new]
-
-        old_set = set(old_lines)
-        new_set = set(new_lines)
-
+        old_lines = [lid.cell_to_lines[cell] for cell in affected_cells_old]
+        new_lines = [lid.cell_to_lines[cell] for cell in affected_cells_new]
+        old_set = set([line_id for lines in old_lines for line_id in lines])
+        new_set = set([line_id for lines in new_lines for line_id in lines])
         delta_E = 0
-
-        #! for every line in the union of sets
         for line_id in old_set.union(new_set):
-
-            #! net diff count
             in_old = line_id in old_set
             in_new = line_id in new_set
-
             delta_E += self._line_delta_energy(line_id, in_old, in_new)
-
         return delta_E
 
-    def apply_move(
-        self, state: StackState, i: int, j: int, k_new: int, delta_E
+    def delta_energy(
+        self,
+        state: StackState | ConstraintStackState,
+        i: int = None,
+        j: int = None,
+        k_new: int = None,
+        i1: int = None,
+        i2: int = None,
+        k1: int = None,
+        k2: int = None,
+    ) -> int:
+        """Energy change for a proposed move."""
+        if isinstance(state, StackState):
+            old_k = state.get_height(i, j)
+            k_new_val = k_new if k_new is not None else old_k
+            if k_new_val == old_k:
+                return 0
+            board = self.geometry
+            cell_old = board.coord_to_id(i, j, old_k)
+            cell_new = board.coord_to_id(i, j, k_new_val)
+            return self._delta_energy_generic([cell_old], [cell_new])
+        elif isinstance(state, ConstraintStackState):
+            k1_val = k1 if k1 is not None else state.get_height(i1, j)
+            k2_val = k2 if k2 is not None else state.get_height(i2, j)
+            if k1_val == k2_val:
+                return 0
+            board = self.geometry
+            cell_1_old = board.coord_to_id(i1, j, k1_val)
+            cell_2_old = board.coord_to_id(i2, j, k2_val)
+            cell_1_new = board.coord_to_id(i1, j, k2_val)
+            cell_2_new = board.coord_to_id(i2, j, k1_val)
+            return self._delta_energy_generic(
+                [cell_1_old, cell_2_old], [cell_1_new, cell_2_new]
+            )
+
+    def _apply_move_generic(
+        self,
+        affected_cells_old: list[int],
+        affected_cells_new: list[int],
+        delta_E: int = None,
     ) -> None:
-        """
-        Apply the move (i,j,k_old)->(i,j,k_new), updating counts and energy
-        """
-
-        old_k = state.get_height(i, j)
-        if k_new == old_k:
-            return
-
-        board = self.geometry
         lid = self.line_index
-
-        cell_old = board.coord_to_id(i, j, old_k)
-        cell_new = board.coord_to_id(i, j, k_new)
-
-        old_lines = lid.cell_to_lines[cell_old]
-        new_lines = lid.cell_to_lines[cell_new]
-
-        old_set = set(old_lines)
-        new_set = set(new_lines)
-
-        #! if the energy is not given, recompute it
-        if delta_E == None:
+        old_lines = [lid.cell_to_lines[cell] for cell in affected_cells_old]
+        new_lines = [lid.cell_to_lines[cell] for cell in affected_cells_new]
+        old_set = set([line_id for lines in old_lines for line_id in lines])
+        new_set = set([line_id for lines in new_lines for line_id in lines])
+        if delta_E is None:
             delta_E = 0
-
             for line_id in old_set.union(new_set):
                 in_old = line_id in old_set
                 in_new = line_id in new_set
-
-                # old : delta_E += nchoose2(new_c) - nchoose2(c)
                 delta_E += self._line_delta_energy(line_id, in_old, in_new)
-
-        #! Update line count
         for line_id in old_set.union(new_set):
             in_old = line_id in old_set
             in_new = line_id in new_set
@@ -138,8 +139,6 @@ class EnergyModel:
                 self.line_counts[line_id] -= 1
             elif in_new and not in_old:
                 self.line_counts[line_id] += 1
-
-        #! Update energy and state
         self.current_energy += delta_E
         state.set_height(i, j, k_new)
 
@@ -161,3 +160,44 @@ class EnergyModel:
 
         return attacked
 
+
+    def apply_move(
+        self,
+        state: StackState | ConstraintStackState,
+        i: int = None,
+        j: int = None,
+        k_new: int = None,
+        i1: int = None,
+        i2: int = None,
+        k1: int = None,
+        k2: int = None,
+        delta_E: int = None,
+    ) -> None:
+        """
+        Apply the move proposed, updating line counts and current energy
+        """
+        if isinstance(state, StackState):
+            old_k = state.get_height(i, j)
+            k_new_val = k_new if k_new is not None else old_k
+            if k_new_val == old_k:
+                return
+            board = self.geometry
+            cell_old = board.coord_to_id(i, j, old_k)
+            cell_new = board.coord_to_id(i, j, k_new_val)
+            self._apply_move_generic([cell_old], [cell_new], delta_E)
+            state.set_height(i, j, k_new_val)
+        elif isinstance(state, ConstraintStackState):
+            k1_val = k1 if k1 is not None else state.get_height(i1, j)
+            k2_val = k2 if k2 is not None else state.get_height(i2, j)
+            if k1_val == k2_val:
+                return
+            board = self.geometry
+            cell_1_old = board.coord_to_id(i1, j, k1_val)
+            cell_2_old = board.coord_to_id(i2, j, k2_val)
+            cell_1_new = board.coord_to_id(i1, j, k2_val)
+            cell_2_new = board.coord_to_id(i2, j, k1_val)
+            self._apply_move_generic(
+                [cell_1_old, cell_2_old], [cell_1_new, cell_2_new], delta_E
+            )
+            state.set_height(i1, j, k2_val)
+            state.set_height(i2, j, k1_val)
