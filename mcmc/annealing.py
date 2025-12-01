@@ -26,6 +26,9 @@ class AnnealingSchedule:
     _current_T: float = field(init=False, default=0.0)
     is_geometric: bool = field(init=False, default=False)
 
+    # --- Verbose parameter ---
+    verbose_every: int = 1000
+
     def __post_init__(self):
         self.is_geometric = (
             self.T_initial is not None
@@ -74,9 +77,13 @@ class AnnealingSchedule:
         for temp_idx, T in enumerate(self.temperatures):
             for step in range(self.num_steps_per_temp):
                 mcmc_chain.step(rng, T)
-                if step % 1000 == 0:
+                if step % self.verbose_every == 0:
+                    attacked = mcmc_chain.energy_model.count_attacked_queens(mcmc_chain.state)
                     print(
-                        f"Temp {temp_idx+1}/{len(self.temperatures)}, Step {step} at T={T:.4f}, Energy={mcmc_chain.energy_model.current_energy:.4f}"
+                        f"Step {self._current_step+1}/{self.max_steps}, "
+                        f"T={T:.4f}, "
+                        f"Energy={mcmc_chain.energy_model.current_energy:.4f}, "
+                        f"Attacked Queens={attacked}"
                     )
 
     def _run_geometric(self, mcmc_chain: MCMCChain, rng: np.random.Generator) -> None:
@@ -86,10 +93,13 @@ class AnnealingSchedule:
         while T > 0.0 and self._current_step < self.max_steps:
             mcmc_chain.step(rng, T)
 
-            if self._current_step % 1000 == 0:
-
+            if self._current_step % self.verbose_every == 0:
+                attacked = mcmc_chain.energy_model.count_attacked_queens(mcmc_chain.state)
                 print(
-                    f"Step {self._current_step+1}/{self.max_steps}, T={T:.4f}, Energy={mcmc_chain.energy_model.current_energy:.4f}"
+                    f"Step {self._current_step+1}/{self.max_steps}, "
+                    f"T={T:.4f}, "
+                    f"Energy={mcmc_chain.energy_model.current_energy:.4f}, "
+                    f"Attacked Queens={attacked}"
                 )
 
             T = self._next_temperature_geometric()

@@ -142,3 +142,22 @@ class EnergyModel:
         #! Update energy and state
         self.current_energy += delta_E
         state.set_height(i, j, k_new)
+
+    def count_attacked_queens(self, state: StackState) -> int:
+        """
+        Returns the number of queens that lie on at least one line with >= 2 queens
+        """
+        attacked = 0
+        board = self.geometry
+        l_id = self.line_index
+
+        for (i, j, k) in state.iter_queens():
+            cell_id = board.coord_to_id(i, j, k)
+            lines = l_id.cell_to_lines[cell_id]
+
+            #! is this queen on any conflicting line?
+            if any(self.line_counts[line_id] > 1 for line_id in lines):
+                attacked += 1
+
+        return attacked
+

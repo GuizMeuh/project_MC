@@ -22,6 +22,7 @@ def main(
     T_initial: float = None,
     alpha: float = None,
     max_steps: int = None,
+    verbose_every: int = 1000,
 ) -> None:
     # ? Initialize random number generator
     rng = np.random.default_rng(rng_seed)
@@ -54,11 +55,13 @@ def main(
             alpha=alpha,
             max_steps=max_steps,
             num_steps_per_temp=number_of_steps,  # optionnel, ignoré en mode géométrique
+            verbose_every=verbose_every,
         )
     else:
         annealing_schedule = AnnealingSchedule(
             temperatures=temperatures,
             num_steps_per_temp=number_of_steps,
+            verbose_every=verbose_every,
         )
 
     # ? Run annealing
@@ -93,6 +96,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_steps", type=int, default=None, help="Max steps for geometric annealing"
     )
+    parser.add_argument(
+        "--verbose_every",
+        type=int,
+        default=1000,
+        help="Print energy/diagnostics every n steps"
+    )
 
     args = parser.parse_args()
 
@@ -107,4 +116,5 @@ if __name__ == "__main__":
         T_initial=args.T_initial,
         alpha=args.alpha,
         max_steps=args.max_steps,
+        verbose_every=args.verbose_every,
     )
