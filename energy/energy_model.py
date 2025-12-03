@@ -92,18 +92,6 @@ class EnergyModel:
 
         return delta_E
 
-<<<<<<< Updated upstream
-    def apply_move(self, state: StackState, i: int, j: int, k_new: int, delta_E) -> None:
-        """
-        Apply the move (i,j,k_old)->(i,j,k_new), updating counts and energy
-        """
-
-        old_k = state.get_height(i, j)
-        if k_new == old_k:
-            return
-
-        board = self.geometry
-=======
     def delta_energy(
         self,
         state: StackState | ConstraintStackState,
@@ -193,7 +181,6 @@ class EnergyModel:
         affected_cells_new: list[int],
         delta_E: int = None,
     ) -> None:
->>>>>>> Stashed changes
         lid = self.line_index
 
         cell_old = board.coord_to_id(i, j, old_k)
