@@ -92,6 +92,7 @@ class EnergyModel:
 
         return delta_E
 
+<<<<<<< Updated upstream
     def apply_move(self, state: StackState, i: int, j: int, k_new: int, delta_E) -> None:
         """
         Apply the move (i,j,k_old)->(i,j,k_new), updating counts and energy
@@ -102,6 +103,97 @@ class EnergyModel:
             return
 
         board = self.geometry
+=======
+    def delta_energy(
+        self,
+        state: StackState | ConstraintStackState,
+        i: int = None,
+        j: int = None,
+        k_new: int = None,
+        i1: int = None,
+        i2: int = None,
+        k1: int = None,
+        k2: int = None,
+    ) -> int:
+        """
+        Energy change for a proposed move.
+        OPTIMIZED for StackState to avoid set creation overhead.
+        """
+        # --- OPTIMISATION CRITIQUE POUR STACKSTATE ---
+        if isinstance(state, StackState):
+            old_k = state.get_height(i, j)
+            k_new_val = k_new if k_new is not None else old_k
+            
+            if k_new_val == old_k:
+                return 0
+            
+            board = self.geometry
+            # ATTENTION: Vérifie ici si tes i, j, k doivent être décalés (-1) ou non
+            # selon ta classe Board. Si Board attend 0..N-1 et que i est 1..N :
+            # cell_old = board.coord_to_id(i, j, old_k)  <-- Vérifie ça !
+            
+            cell_old = board.coord_to_id(i, j, old_k)
+            cell_new = board.coord_to_id(i, j, k_new_val)
+            
+            # Accès direct aux listes (beaucoup plus rapide que les Sets)
+            lines_old = self.line_index.cell_to_lines[cell_old]
+            lines_new = self.line_index.cell_to_lines[cell_new]
+            
+            delta_E = 0
+            
+            # 1. Lignes quittées (on retire une reine)
+            for line_id in lines_old:
+                # Est-ce que cette ligne existe aussi dans la nouvelle position ?
+                # On vérifie manuellement pour éviter de créer un set
+                is_shared = False
+                for l_new in lines_new:
+                    if l_new == line_id:
+                        is_shared = True
+                        break
+                
+                if not is_shared:
+                    c = self.line_counts[line_id]
+                    # La formule mathématique simplifiée : Energy(c-1) - Energy(c)
+                    delta_E -= (c - 1)
+
+            # 2. Lignes rejointes (on ajoute une reine)
+            for line_id in lines_new:
+                is_shared = False
+                for l_old in lines_old:
+                    if l_old == line_id:
+                        is_shared = True
+                        break
+                
+                if not is_shared:
+                    c = self.line_counts[line_id]
+                    # La formule mathématique simplifiée : Energy(c+1) - Energy(c)
+                    delta_E += c
+            
+            return delta_E
+
+        # --- CAS COMPLEXE (Swap) : On garde l'ancienne méthode lente ---
+        elif isinstance(state, ConstraintStackState):
+            k1_val = k1 if k1 is not None else state.get_height(i1, j)
+            k2_val = k2 if k2 is not None else state.get_height(i2, j)
+            if k1_val == k2_val:
+                return 0
+            board = self.geometry
+            cell_1_old = board.coord_to_id(i1, j, k1_val)
+            cell_2_old = board.coord_to_id(i2, j, k2_val)
+            cell_1_new = board.coord_to_id(i1, j, k2_val)
+            cell_2_new = board.coord_to_id(i2, j, k1_val)
+            return self._delta_energy_generic(
+                [cell_1_old, cell_2_old], [cell_1_new, cell_2_new]
+            )
+        return 0
+    
+    def _apply_move_generic(
+        self,
+        affected_cells_old: list[int],
+        affected_cells_new: list[int],
+        delta_E: int = None,
+    ) -> None:
+>>>>>>> Stashed changes
         lid = self.line_index
 
         cell_old = board.coord_to_id(i, j, old_k)
