@@ -136,7 +136,7 @@ class GlobalSubcubeShuffleProposal(Proposal):
     aléatoirement les positions des reines à l'intérieur de ce carré.
     Idéal pour casser les structures locales figées (minima locaux).
     """
-    def __init__(self, N: int, radius_ratio: float = 0.12):
+    def __init__(self, N: int, radius_ratio: float = 0.08):
         self.N = N
         # Rayon du cube (au minimum 1, sinon ça ne fait rien)
         self.radius = max(1, int(N * radius_ratio))

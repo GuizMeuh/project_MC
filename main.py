@@ -57,15 +57,16 @@ def main(
     energy_model.initialize(state)
 
     # ? Initialize proposal mechanism
-    #proposal = MixedProposal(N, p_shuffle=0.0001, p_swap=0.2) seed 42 to have 0
+    #proposal = MixedProposal(N, p_shuffle=0.0001, p_swap=-1) seed 42 to have 0
     proposal = MixedProposal(N, p_shuffle=0.0001, p_swap=-1)
         
     # ? Initialize MCMC chain
     mcmc_chain = MCMCChain(state=state, energy_model=energy_model, proposal=proposal)
     mcmc_chain_calibration = MCMCChain(state=state, energy_model=energy_model, proposal=proposal)
-    #T_initial = calibrate_initial_temperature(
-        #mcmc_chain_calibration, target_acceptance_rate=0.85, n_samples=5000, rng=rng
-    #)
+    T_initial = calibrate_initial_temperature(
+        mcmc_chain_calibration, target_acceptance_rate=0.85, n_samples=5000, rng=rng
+    )
+    #T_initial=100
     print(f"Calibrated initial temperature: T0 = {T_initial:.4f}")
     # ? Define annealing schedule
     if T_initial is not None and alpha is not None and max_steps is not None:

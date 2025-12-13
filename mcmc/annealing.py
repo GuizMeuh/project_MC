@@ -174,6 +174,7 @@ def run_simulated_annealing(
         "positions": [],
     }
     best_energy = mcmc_chain.energy_model.current_energy
+    
 
     if is_watched:
         pbar_context = tqdm(total=schedule.max_steps, desc="Simulated Annealing")
@@ -184,11 +185,15 @@ def run_simulated_annealing(
     with pbar_context as pbar:
         while not schedule.is_finished():
             # 1. Retrieve the current temperature T
+            if(best_energy == 0):
+                print(f"Solution found at iteration {iteration}!")
+                pbar.close()
+                return history
             T = schedule.get_temperature()
 
             # 2. Perform one MCMC step (State transition with Metropolis acceptance)
             mcmc_chain.step(rng, T)
-
+            
             # 3. Update the temperature for the next iteration
             if(re_heat == True):
                 schedule.update_metrics(mcmc_chain.energy_model.current_energy, 
@@ -196,7 +201,7 @@ def run_simulated_annealing(
             schedule.step()
 
             # Collect stats at every step
-            current_energy = mcmc_chain.energy_model.current_energy
+            current_energy = mcmc_chain.energy_model.current_energy            
             if(current_energy < best_energy): 
                 best_energy = current_energy
 
